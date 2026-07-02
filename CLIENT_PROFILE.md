@@ -4,7 +4,7 @@
 ## Simon
 - Account overseer at Heartland: retains existing clients + finds new ones.
 - Has a full team to work leads — we hand off qualified leads, they call and close.
-- Friend/warm relationship — <!-- how we communicate with him: email? text? cadence? -->
+- Friend/warm relationship — Frankie's close friend. Communication over Zoom, text, and email
 - Handoff point: <!-- ASK SIMON — at what stage does he want the lead? name+research only, or after first contact? -->
 - Feedback loop: reviews each pilot batch, tells us what's missing. Log answers in FEEDBACK_LOG.md.
 
@@ -18,7 +18,7 @@
 - **POS systems** (Genius / Heartland Restaurant) — cloud POS, online ordering, tip tracking, time & attendance built in.
 - **Payroll+** — payroll, tax filing, W-2s, time & attendance, hiring portal/ATS, WOTC screening, ACA reporting.
 - **Extras:** gift/loyalty, surcharge programs, invoicing, business lending (24–48hr).
-- Bundles are the strength — POS + payments + payroll together. High payroll headcount = high value (~$700–800/yr per 100-person payroll <!-- verify this number with Simon -->).
+- Bundles are the strength — POS + payments + payroll together. High payroll headcount = high value (~$700–800/yr per 100-person payroll).
 
 ## Selling points to lead with
 1. Bundling — one provider for POS, payments, payroll.
