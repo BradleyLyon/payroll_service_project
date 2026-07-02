@@ -30,10 +30,10 @@ NYC (we can visit in person — our edge). Simon can serve any state remotely.
 Business name, contact, size estimate, platform/hosting detected, website/DoorDash status, one compliance or pain-point flag, one-line pitch angle, rank.
 
 ## Team
-- Brad — <!-- role/focus -->
-- Jack — <!-- role/focus -->
+- Brad — <!-- role/focus: Client Communication and Repo Management -->
+- Jack — <!-- role/focus: Coding lead -->
 - Simon — client; reviews batches, gives feedback
-- Frankie — <!-- role -->
+- Frankie — <!-- role: Simon's friend, Brad's brother, communication between the two and web design for clients through an employee for successful leads -->
 
 ## Current phase
 <!-- Update this line as things move -->
