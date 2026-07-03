@@ -6,26 +6,26 @@ Takes the SLA pending-license CSV, processes the first N rows, and for each one
 asks the Google Places API two questions:
 
   1. Is this an opening / new restaurant?  (via businessStatus + "not found yet")
-  2. Does it have other locations? If so, flag it to SET ASIDE (chain).
+  2. Does it have other locations? If so, classify:
+       - CHAIN (known brand name or 8+ locations)  -> set aside
+       - MULTI-LOCATION independent (2-7 locations) -> POSITIVE signal (S3 sweet spot, +2)
 
-Why Places API and not "googling" directly:
-  - Google search results are not meant to be scraped. You get CAPTCHAs, IP
-    bans, and a brittle parser. The Places API gives you structured fields
-    (businessStatus, address, place id) that are exactly what you need.
-
-Setup (run once, locally — NOT in a no-internet sandbox):
-  pip install requests
+Setup (run once, locally):
+  pip install requests python-dotenv
   Get a key: https://console.cloud.google.com  -> enable "Places API (New)"
-  export GOOGLE_PLACES_API_KEY="your_key"
-  # Optional, for "coming soon" news signal (see SERP_ENABLED below):
-  export SERPER_API_KEY="your_serper_key"   # from https://serper.dev
+  Put it in a .env file next to this script:
+      GOOGLE_PLACES_API_KEY=your_key
+  Optional, for "coming soon" news signal:
+      SERPER_API_KEY=your_serper_key
 
 Run:
-  python3 restaurant_status_bot.py Pending_Licenses.csv --limit 20 --out enriched.csv
+  python3 restaurant_status_bot.py "Pending Licenses.csv" --limit 20 --restaurants-only --out enriched.csv
+  # NYC five boroughs only is the DEFAULT. Add --all-ny to include the whole state.
 
 Output columns:
-  search_name, address, found, business_status, match_address,
-  location_count, set_aside_chain, opening_signal, notes, maps_url
+  search_name, address, zip, category, description, license_status, found,
+  business_status, match_address, location_count, chain_flag, multi_location,
+  opening_signal, notes, maps_url
 """
 
 import argparse
@@ -33,12 +33,20 @@ import csv
 import os
 import sys
 import time
+from pathlib import Path
 
 import requests
 
+# --- load .env sitting next to this script (works in PyCharm too) ----------
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent / ".env")
+except ImportError:
+    pass  # fall back to shell-exported env vars
+
 PLACES_KEY = os.environ.get("GOOGLE_PLACES_API_KEY")
 SERPER_KEY = os.environ.get("SERPER_API_KEY")
-SERP_ENABLED = bool(SERPER_KEY)  # the "coming soon" check turns on if you set the key
+SERP_ENABLED = bool(SERPER_KEY)
 
 TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 
@@ -48,6 +56,20 @@ KNOWN_CHAIN_HINTS = {
     "ralph's coffee", "shake shack", "sweetgreen", "chick-fil-a", "panera",
     "popeyes", "wendy", "taco bell", "kfc", "burger king", "domino",
 }
+
+# location_count at or above this = treat as chain even without a name match
+CHAIN_LOCATION_THRESHOLD = 8
+
+# NYC five boroughs by ZIP prefix:
+#   100-102 Manhattan · 103 Staten Island · 104 Bronx
+#   110/111/113/114/116 Queens · 112 Brooklyn
+NYC_ZIP_PREFIXES = ("100", "101", "102", "103", "104",
+                    "110", "111", "112", "113", "114", "116")
+
+
+def is_nyc_zip(zp: str) -> bool:
+    zp = (zp or "").strip()
+    return len(zp) >= 3 and zp[:3] in NYC_ZIP_PREFIXES
 
 
 def places_text_search(query, field_mask, location_bias=None, max_results=5):
@@ -73,7 +95,8 @@ def check_lead(name, address, city):
         "business_status": "",
         "match_address": "",
         "location_count": 0,
-        "set_aside_chain": "N",
+        "chain_flag": "N",       # known brand OR 8+ locations -> disqualify
+        "multi_location": "N",   # 2-7 same-name locations -> POSITIVE (S3, +2)
         "opening_signal": "",
         "notes": "",
         "maps_url": "",
@@ -82,9 +105,8 @@ def check_lead(name, address, city):
     # Fast pre-filter: obvious national chains by name
     low = name.lower()
     if any(h in low for h in KNOWN_CHAIN_HINTS) or "#" in name:
-        result["set_aside_chain"] = "Y"
+        result["chain_flag"] = "Y"
         result["notes"] = "Name matches a known chain pattern."
-        # still worth confirming below, but flag is set
 
     # --- Q1: status of the exact premise -------------------------------
     mask = ("places.displayName,places.formattedAddress,"
@@ -114,8 +136,7 @@ def check_lead(name, address, city):
         elif bs in ("CLOSED_PERMANENTLY",):
             result["opening_signal"] = "closed_permanently (skip)"
 
-    # --- Q2: other locations? (chain detection) ------------------------
-    # Search the bare name across a wide area; count distinct addresses.
+    # --- Q2: other locations? (chain vs multi-location independent) ----
     name_only = places_text_search(name, "places.formattedAddress,places.displayName",
                                    max_results=10)
     if isinstance(name_only, list) and name_only:
@@ -126,10 +147,15 @@ def check_lead(name, address, city):
             if dn and (low[:6] in dn or dn[:6] in low):
                 addrs.add(p.get("formattedAddress", ""))
         result["location_count"] = len(addrs)
-        if len(addrs) > 1:
-            result["set_aside_chain"] = "Y"
-            extra = f"{len(addrs)} matching locations found."
-            result["notes"] = (result["notes"] + " | " + extra).strip(" |")
+        if len(addrs) >= CHAIN_LOCATION_THRESHOLD:
+            result["chain_flag"] = "Y"
+            result["notes"] = (result["notes"] +
+                               f" | {len(addrs)} locations — chain scale.").strip(" |")
+        elif len(addrs) >= 2 and result["chain_flag"] == "N":
+            result["multi_location"] = "Y"
+            result["notes"] = (result["notes"] +
+                               f" | {len(addrs)} locations — multi-location independent (S3 signal). "
+                               f"Verify same business, not name collision.").strip(" |")
 
     # --- Optional: "coming soon" news signal via SERP ------------------
     if SERP_ENABLED and result["opening_signal"].startswith("likely_preopen"):
@@ -158,13 +184,16 @@ def main():
     ap.add_argument("--out", default="enriched.csv")
     ap.add_argument("--restaurants-only", action="store_true",
                     help="Only process rows whose Description looks like food service")
+    ap.add_argument("--all-ny", action="store_true",
+                    help="Include all of NY state (default: NYC five boroughs only)")
     args = ap.parse_args()
 
     if not PLACES_KEY:
-        sys.exit("Set GOOGLE_PLACES_API_KEY first.")
+        sys.exit("Set GOOGLE_PLACES_API_KEY (in .env next to this script, or export it).")
 
     food_terms = ("restaurant", "food & beverage", "summer food")
     out_rows = []
+    skipped_geo = 0
     with open(args.csv_path, encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         count = 0
@@ -174,29 +203,37 @@ def main():
             desc = (row.get("Description") or "").lower()
             if args.restaurants_only and not any(t in desc for t in food_terms):
                 continue
+            zp = (row.get("ZIP") or "").strip()
+            if not args.all_ny and not is_nyc_zip(zp):
+                skipped_geo += 1
+                continue
             name = (row.get("Premise DBA") or "").strip() or (row.get("Premise Name") or "").strip()
             a1 = (row.get("Address1") or "").strip()
             city = (row.get("City") or "").strip()
-            zp = (row.get("ZIP") or "").strip()
             address = ", ".join(x for x in [a1, city, "NY", zp] if x)
 
             print(f"[{count+1}/{args.limit}] {name} — {address}")
             enriched = check_lead(name, address, city)
-            enriched.update({"search_name": name, "address": address,
+            enriched.update({"search_name": name, "address": address, "zip": zp,
                              "category": row.get("Category", ""),
-                             "description": row.get("Description", "")})
+                             "description": row.get("Description", ""),
+                             "license_status": (row.get("License Status")
+                                                or row.get("Status")
+                                                or row.get("Application Status") or "")})
             out_rows.append(enriched)
             count += 1
             time.sleep(0.3)  # be polite to the API
 
-    cols = ["search_name", "address", "category", "description", "found",
-            "business_status", "match_address", "location_count",
-            "set_aside_chain", "opening_signal", "notes", "maps_url"]
+    cols = ["search_name", "address", "zip", "category", "description",
+            "license_status", "found", "business_status", "match_address",
+            "location_count", "chain_flag", "multi_location",
+            "opening_signal", "notes", "maps_url"]
     with open(args.out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
         w.writerows(out_rows)
-    print(f"\nWrote {len(out_rows)} rows to {args.out}")
+    print(f"\nWrote {len(out_rows)} rows to {args.out}"
+          + (f" ({skipped_geo} rows skipped — outside NYC five boroughs)" if skipped_geo else ""))
 
 
 if __name__ == "__main__":
