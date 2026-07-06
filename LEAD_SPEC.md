@@ -65,3 +65,27 @@ Deliver only leads scoring ≥ <!-- set after Pilot A -->. Rank descending.
 - Row 1 frozen headers = fields above. One tab. No colors/merged cells — his team will import it.
 - Every batch logged in `leads` table with delivery date + later outcome (called / closed / rejected + reason).
 <!-- Outcome tracking is what makes the 3–5% measurable. Nag Simon for outcomes monthly. -->
+
+Every lead row must carry, in addition to the existing spec:
+
+
+evidence_url — the URL that proves the primary signal (e.g. the order.toasttab.com page). No evidence URL for a detected-platform lead = not shippable. For non-URL signals (cash-only), cite the primary source + its date.
+verified_as_of — a date per fact, not per lead. Crowd-review signals (Yelp categories, old reviews) expire in ~12 months; map-scrape candidate lists expire in weeks. Any fact older than its expiry gets re-verified before handoff.
+secondary_angles — noted in the row, never pitched at first contact (one-angle rule).
+open_items + status — a lead with open items carries OPEN ITEMS PENDING — do not ship. Verify Before Handoff is enforced by this field.
+
+
+Hard disqualifiers (additions)
+
+
+Hotel-based restaurants — auto-DQ unless verified as an independently operated tenant. Hotel groups control F&B vendor decisions (case: Cuna NYC inside The Standard, East Village → Hyatt).
+Entity-resolution failure — leads must match on name + address + entity. Same-name businesses under different owners are common (Apapacho Brooklyn vs. Apapacho Taqueria DC; Wo Hop 17 Mott vs. differently-owned "Wo Hop Next Door"; Tom's Prospect Heights vs. Tom's Morningside Heights; Peppa's multi-operator cluster). Unresolvable entity → lead is parked, not shipped. Wrong-entity enrichment poisons the lead (the DC Apapacho is on Square; attributing that to the Brooklyn one would have shipped a false signal).
+
+
+Ranking rubric (additions)
+
+
+Timing bonus: recent capital event (new location, expansion, build-out ≤ 12 months) bumps rank on top of any base angle.
+Stack-contradiction bonus: simultaneously-true angles (e.g. paying for Toast POS while bleeding marketplace commissions) rank above either angle alone.
+Named-owner bonus: a named, reachable principal beats an equivalent lead with only a storefront phone number.
+Institution-holdout penalty: decades-deliberate cash-only with no modernization signal ranks below signal-fresh leads (pending Simon's call on whether they ship at all).   
