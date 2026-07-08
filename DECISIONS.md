@@ -13,3 +13,10 @@
 - 2026-07 | NYC focus over Maine | in-person access is our edge; Simon serves any state remotely | revisit if NYC pipeline saturates
 - 2026-07 | Manual enrichment first, automate what's measured slowest | manual pass = the automation spec | ongoing
 - 2026-07 | Docs use HTML comments for meta-notes | invisible on GitHub render, visible to AI reading raw | permanent
+2026-07-06 — Split angle #10 into 10a (third-party-only; bot-only, search-resistant) and 10b (white-label-dependent: order.online/Sauce); added #15 fragmented multi-platform stack. See PITCH_ANGLES.md.
+2026-07-06 — Entity resolution by name+address+entity is mandatory; 4 name collisions hit in one session. Places API place_id becomes the canonical business key once the key is live.
+2026-07-06 — Hotel-address auto-DQ (hotel F&B = enterprise-controlled vendor decisions).
+2026-07-06 — Every sourced fact carries verified_as_of; crowd signals expire ~12mo (John's of Bleecker appeared cash-only in Yelp's category a decade after taking cards), map-scrape candidate lists expire in weeks (all four seed candidates from the June notes had drifted by July).
+2026-07-06 — Detector priority reordered: (1) marketplace-residue (10a: marketplace listings → Places lookup → no-website filter), (2) platform fingerprints incl. new table entries, (3) hosting DNS. Rationale: 10a is the one thing manual work cannot approximate; hosting was blank on 13/13 manual leads but is mechanical once built.
+2026-07-06 — Detectors scrape competitor ordering pages, not just fingerprint URLs — Toast/Clover pages leak surcharge disclosures, gift-card programs, delivery config (case: The Grand's 3% surcharge found on its Toast page).
+2026-07-06 — Manual pilot delivery format = pilot_batch_leads_YYYY-MM-DD.csv; filename date maps to the batch's pulled_at on ingest, matching the SLA export convention.
