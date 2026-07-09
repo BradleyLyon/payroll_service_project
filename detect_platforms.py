@@ -125,7 +125,10 @@ TIMEOUT = 12
 # platform / doordash map straight onto the enrichments columns.
 # Source of each row: DATA_SOURCES.md §8 (confirmed in the wild 2026-07-06).
 FINGERPRINTS = [
-    dict(where="url", pattern=r"order\.toasttab\.com|toasttab\.com/local/order",
+    # 2026-07 widened: was `toasttab.com/local/order`, which missed Burger Queens'
+    # real Toast page (`toasttab.com/local/burgerqueens` — no /order/ segment).
+    # Caught by validate_detectors.py. Any toasttab.com/local/<slug> is Toast-hosted.
+    dict(where="url", pattern=r"order\.toasttab\.com|toasttab\.com/local/",
          platform="toast", angle="13", note="Toast online ordering"),
     dict(where="url", pattern=r"clover\.com/online-ordering",
          platform="clover", angle="tier5-clover", note="Clover online ordering"),
