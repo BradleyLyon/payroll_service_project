@@ -1,0 +1,24 @@
+# requirements.txt
+#
+# STDLIB-FIRST RULE (see DECISIONS.md): this project uses the Python standard
+# library wherever possible. Everything the scripts need for CSV handling,
+# SQLite, hashing, URL parsing, and argument parsing is already stdlib —
+# no pandas, no openpyxl, no sodapy.
+#
+# Do NOT add a dependency here without adding a matching line to DECISIONS.md
+# explaining why the stdlib wasn't enough. A new dependency is a decision,
+# not a convenience.
+#
+# Install:  pip install -r requirements.txt
+#
+# Used by: restaurant_status_bot.py, detect_platforms.py, ny_entity_lookup.py,
+#          ingest_sla.py, init_db.py
+
+# HTTP calls: Google Places, DNS-over-HTTPS, RDAP, Socrata (data.ny.gov), site fetches.
+requests>=2.31.0
+
+# Reads GOOGLE_PLACES_API_KEY (and optional SERPER_API_KEY / SOCRATA_APP_TOKEN)
+# from the gitignored .env file. If this is missing, the scripts fall back to
+# reading os.environ and the key silently never loads — the exact failure mode
+# behind the sweep-mode "key not found" error. Install it.
+python-dotenv>=1.0.0

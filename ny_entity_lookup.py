@@ -39,11 +39,23 @@ from pathlib import Path
 
 import requests
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv(Path(__file__).parent / ".env")
-except ImportError:
-    pass
+def load_env(path=None):
+    """Read a .env file next to this script into os.environ. Stdlib only."""
+    path = Path(path or Path(__file__).parent / ".env")
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        key = key.strip().removeprefix("export ").strip()
+        val = val.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = val
+
+
+load_env()
 
 DATASET_URL = "https://data.ny.gov/resource/n9v6-gdp6.json"
 TIMEOUT = 20
